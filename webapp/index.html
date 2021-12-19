@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Wkavu</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+    <link rel="stylesheet" href="//unpkg.com/amis@1.5.5/sdk/sdk.css"/>
+    <link rel="stylesheet" href="//unpkg.com/amis@1.5.5/sdk/helper.css"/>
+    <link rel="stylesheet" href="//unpkg.com/amis@1.5.5/sdk/iconfont.css"/>
+    <style>
+        html,
+        body,
+        .app-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="root" class="app-wrapper"></div>
+<script src="//unpkg.com/amis@latest/sdk/sdk.js"></script>
+<script type="text/javascript">
+    (function () {
+        let amis = amisRequire('amis/embed');
+        // 通过替换下面这个配置来生成不同页面
+        let amisJSON = {
+            "type": "page",
+            "title": "Wkavu",
+            "body": [
+                {
+                    "type": "crud",
+                    "api": "get:/admin/tvs",
+                    "bulkActions": [],
+                    "itemActions": [],
+                    "errorMsg": {
+                        "config": {
+                            "url": "/admin/tvs",
+                            "method": "post",
+                            "data": "{\"type\":\"crud\",\"api\":\"/admin/tvs\",\"columns\":[{\"name\":\"id\",\"label\":\"ID\",\"type\":\"text\"},{\"name\":\"engine\",\"label\":\"渲染引擎\",\"type\":\"text\"}],\"bulkActions\":[],\"itemActions\":[]}",
+                            "headers": {
+                                "Accept": "application/json, text/plain, */*",
+                                "Content-Type": "application/json"
+                            },
+                            "transformRequest": [
+                                {}
+                            ],
+                            "transformResponse": [
+                                {}
+                            ],
+                            "timeout": 0,
+                            "withCredentials": true,
+                            "adapter": {},
+                            "xsrfCookieName": "XSRF-TOKEN",
+                            "xsrfHeaderName": "X-XSRF-TOKEN",
+                            "maxContentLength": -1,
+                            "maxBodyLength": -1,
+                            "validateStatus": {}
+                        },
+                        "request": {},
+                        "isAxiosError": true,
+                        "toJSON": {}
+                    },
+                    "features": [
+                        "create",
+                        "delete"
+                    ],
+                    "perPageAvailable": [
+                        10
+                    ],
+                    "messages": {},
+                    "initFetch": true,
+                    "headerToolbar": [
+                        {
+                            "label": "新增",
+                            "type": "button",
+                            "actionType": "dialog",
+                            "level": "primary",
+                            "dialog": {
+                                "title": "新增",
+                                "body": {
+                                    "type": "form",
+                                    "api": "POST:/admin/tvs",
+                                    "body": [
+                                        {
+                                            "type": "input-text",
+                                            "name": "name",
+                                            "label": "名称"
+                                        },
+                                        {
+                                            "type": "input-text",
+                                            "name": "tvdbid",
+                                            "label": "TVDB ID"
+                                        },
+                                        {
+                                            "type": "input-text",
+                                            "name": "tvname",
+                                            "label": "TVDB名称"
+                                        },
+                                        {
+                                            "type": "input-text",
+                                            "name": "url",
+                                            "label": "网址"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "bulkActions",
+                        "pagination"
+                    ],
+                    "quickSaveApi": "",
+                    "quickSaveItemApi": "",
+                    "keepItemSelectionOnPageChange": false,
+                    "mode": "table",
+                    "columns": [
+                        {
+                            "name": "id",
+                            "label": "ID",
+                            "type": "text",
+                            "placeholder": "-",
+                            "popOver": false
+                        },
+                        {
+                            "type": "text",
+                            "name": "name",
+                            "label": "名称"
+                        },
+                        {
+                            "name": "tvdbid",
+                            "label": "TVDB ID",
+                            "type": "text"
+                        },
+                        {
+                            "type": "text",
+                            "name": "tvname",
+                            "label": "TVDB名称"
+                        },
+                        {
+                            "type": "text",
+                            "name": "url",
+                            "label": "网址"
+                        },
+                        {
+                            "type": "operation",
+                            "label": "操作",
+                            "buttons": [
+                                {
+                                    "type": "button",
+                                    "label": "查看",
+                                    "actionType": "dialog",
+                                    "level": "dark",
+                                    "dialog": {
+                                        "size": "xl",
+                                        "title": "下载详情",
+                                        "body": {
+                                            "type": "page",
+                                            "body": {
+                                                "type": "crud",
+                                                "api": "/admin/seeds/tvid/$id?perPage=$perPage&page=$page",
+                                                "syncLocation": false,
+                                                "columns": [
+                                                    {
+                                                        "name": "id",
+                                                        "label": "ID"
+                                                    },
+                                                    {
+                                                        "name": "ep",
+                                                        "label": "EP"
+                                                    },
+                                                    {
+                                                        "name": "name",
+                                                        "label": "Name"
+                                                    },
+                                                    {
+                                                        "name": "url",
+                                                        "label": "Url"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "button",
+                                    "label": "删除",
+                                    "actionType": "ajax",
+                                    "confirmText": "确定要删除？",
+                                    "api": "POST:/admin/tvs/delete",
+                                    "level": "warning"
+                                }
+                            ]
+                        }
+                    ],
+                    "hideQuickSaveBtn": false
+                }
+            ],
+            "messages": {},
+            "style": {},
+            "regions": [
+                "body",
+                "toolbar",
+                "header"
+            ],
+            "toolbar": [
+                {
+                    "type": "button-toolbar",
+                    "buttons": [
+                        {
+                            "type": "button",
+                            "label": "重新拉取",
+                            "actionType": "ajax",
+                            "api": "get:/admin/fetch",
+                            "feedback": {
+                                "title": "操作成功",
+                                "body": "重新拉取中，请等待"
+                            },
+                            "level": "warning"
+                        }
+                    ]
+                }
+            ]
+        };
+        let amisScoped = amis.embed('#root', amisJSON);
+    })();
+</script>
+</body>
+</html>
