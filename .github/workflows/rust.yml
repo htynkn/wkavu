@@ -25,10 +25,8 @@ jobs:
           command: build
       - uses: actions-rs/cargo@v1
         with:
-          command: clean
-      - uses: actions-rs/cargo@v1
-        with:
           command: test
+      - run: apt update && apt install -y libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
       - run: |
           wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
           tar xzf master.tar.gz &&
