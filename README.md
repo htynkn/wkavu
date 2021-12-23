@@ -5,7 +5,7 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/htynkn/wkavu)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fhtynkn%2Fwkavu.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fhtynkn%2Fwkavu?ref=badge_shield)
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/[your GitHub username]/[your repository])
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/htynkn/wkavu)
 
 A simple (also minimal) torznab protocol implement which can work with sonarr.
 
