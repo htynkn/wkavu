@@ -212,6 +212,10 @@ mod tests {
     #[test]
     fn test_pub_date() {
         let date = pub_date();
-        println!("{}", date);
+    }
+
+    #[test]
+    fn test_caps(){
+        let xml = caps();
     }
 }

@@ -241,3 +241,17 @@ fn on_cron(name: &str) {
         }
     });
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{http, test};
+
+    #[actix_rt::test]
+    async fn test_health_ok() {
+        let req = test::TestRequest::with_header("content-type", "application/json; charset=UTF-8").to_http_request();
+        let resp = health().await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+    }
+}

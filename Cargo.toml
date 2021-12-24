@@ -32,3 +32,6 @@ urlencoding = "2.1.0"
 cronjob = "0.3.17"
 async-trait = "0.1.52"
 regex = "1.5.4"
+
+[dev-dependencies]
+actix-rt = "2.5.0"
