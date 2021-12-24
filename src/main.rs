@@ -26,7 +26,7 @@ use rbatis::crud::CRUD;
 use rbatis::{Page, PageRequest};
 
 use crate::model::{OperationResponse, PageResponse, Tv, TvSeed};
-use crate::resolver::{Domp4Resolver, Resolver};
+use crate::resolver::Resolver;
 use crate::torznab::TorznabProvider;
 
 mod global;
