@@ -10,12 +10,12 @@ use regex::Regex;
 use scraper::{Html, Selector};
 use select::document::Document;
 use select::predicate::Name;
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 
 use crate::global;
 use crate::model::{Tv, TvSeed};
-
-pub struct Domp4Resolver {}
 
 #[derive(Debug)]
 pub struct Data {
@@ -47,7 +47,7 @@ impl Resolver {
 
         if tv.is_some() {
             let tv = tv.unwrap();
-            let resolver = Domp4Resolver::new();
+            let resolver = DefaultResolver::new();
             let data = resolver.fetch(&tv).await.unwrap();
             let data = resolver.normalize(&tv, data).await.unwrap();
 
@@ -105,15 +105,68 @@ pub enum ResolveError {
     EpParseFailure(String),
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverDefine {
+    id: String,
+    name: String,
+    domains: Vec<String>,
+    timeout: u64,
+    search: ResolverSearchDefine,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverRowSelectorDefine {
+    attr: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverRowsDefine {
+    selector: String,
+    title: ResolverRowSelectorDefine,
+    url: ResolverRowSelectorDefine,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverSearchDefine {
+    wait: String,
+    rows: ResolverRowsDefine,
+}
+
+#[derive(RustEmbed)]
+#[folder = "define/"]
+struct Define;
+
+pub struct DefaultResolver {
+    pub defines: Vec<ResolverDefine>,
+}
+
 #[async_trait]
-impl CommonResolver for Domp4Resolver {
+impl CommonResolver for DefaultResolver {
     fn new() -> Self {
-        Domp4Resolver {}
+        let mut defines = vec![];
+        for file in Define::iter() {
+            let yaml = Define::get(file.as_ref()).unwrap();
+            let yaml_content = std::str::from_utf8(yaml.data.as_ref());
+            let define: ResolverDefine = serde_yaml::from_str(yaml_content.unwrap()).unwrap();
+            info!("load config for {}", define.id);
+            defines.push(define);
+        }
+        DefaultResolver { defines }
     }
 
     async fn fetch(&self, tv: &Tv) -> Result<Vec<Data>> {
-        info!("starting fetch...");
         let url = tv.url.as_ref().unwrap();
+        let selected_define = self.defines.iter().find(|d| {
+            for domain in &d.domains {
+                if url.starts_with(domain) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        let selected_define = selected_define.unwrap();
+
+        info!("starting fetch...");
         let mut data = vec![];
 
         let browser = Browser::default().unwrap();
@@ -121,10 +174,13 @@ impl CommonResolver for Domp4Resolver {
         let tab = browser.wait_for_initial_tab().unwrap();
         info!("browser tab is ready");
 
-        tab.navigate_to(url).unwrap();
+        tab.navigate_to(&url).unwrap();
 
-        tab.wait_for_element_with_custom_timeout("a.copybtn", Duration::from_secs(30))
-            .unwrap();
+        tab.wait_for_element_with_custom_timeout(
+            &selected_define.search.wait,
+            Duration::from_secs(selected_define.timeout),
+        )
+        .unwrap();
         info!("waiting for special button");
 
         let root_div: Element = tab.wait_for_element("body").unwrap();
@@ -137,12 +193,12 @@ impl CommonResolver for Domp4Resolver {
         let document = Html::parse_document(html.as_str().unwrap());
         info!("get doc object");
 
-        let selector = Selector::parse("ul.down-list div.url-left a").unwrap();
+        let selector = Selector::parse(&selected_define.search.rows.selector).unwrap();
         let list = document.select(&selector);
 
         for item in list {
-            let title = item.value().attr("title");
-            let url = item.value().attr("href");
+            let title = item.value().attr(&selected_define.search.rows.title.attr);
+            let url = item.value().attr(&selected_define.search.rows.url.attr);
 
             data.push(Data::new(title.unwrap(), url.unwrap()));
         }
@@ -190,16 +246,24 @@ impl CommonResolver for Domp4Resolver {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::Path;
+
     use super::*;
 
     #[test]
-    fn test_extra_ep() {
-        assert_eq!(extra_ep("第26集").unwrap(), 26);
-        assert_eq!(extra_ep("第01集").unwrap(), 1);
+    fn test_parse_yml() {
+        let paths = fs::read_dir("./define").unwrap();
+
+        for path in paths {
+            let result = std::fs::read_to_string(path.unwrap().path()).unwrap();
+            let define: ResolverDefine = serde_yaml::from_str(&result).unwrap();
+            println!("Define:{:?}", define);
+        }
     }
 
     #[test]
-    fn test_cant_extra_ep() {
-        assert_eq!(extra_ep("S01E03").is_err(), true);
+    fn test_load() {
+        let resolver = DefaultResolver::new();
     }
 }

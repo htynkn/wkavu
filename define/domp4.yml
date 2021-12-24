@@ -1,0 +1,15 @@
+---
+id: domp4
+name: domp4
+domains:
+  - https://www.domp4.cc/
+timeout: 30
+
+search:
+  wait: a.copybtn
+  rows:
+    selector: ul.down-list div.url-left a
+    title:
+      attr: title
+    url:
+      attr: href

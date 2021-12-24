@@ -14,7 +14,6 @@ use xml::writer::{EmitterConfig, EventWriter, Result, XmlEvent};
 
 use crate::global;
 use crate::model::Tv;
-use crate::resolver::Domp4Resolver;
 use crate::{ApiRequest, TvSeed};
 
 pub struct TorznabProvider {}

@@ -5,6 +5,8 @@ extern crate cronjob;
 extern crate lazy_static;
 #[macro_use]
 extern crate rbatis;
+#[macro_use]
+extern crate rust_embed;
 extern crate tinytemplate;
 
 use std::path::Path;
