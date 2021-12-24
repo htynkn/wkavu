@@ -70,7 +70,7 @@ impl TorznabProvider {
     }
 
     pub async fn search(&self, info: &Query<ApiRequest>) -> String {
-        let mut wrapper;
+        let wrapper;
         if info.tvdbid.is_some() {
             let tvdbid = info.tvdbid.as_ref().unwrap().clone();
             wrapper = global::RB.new_wrapper().eq("tvdbid", tvdbid);
@@ -215,7 +215,8 @@ mod tests {
     }
 
     #[test]
-    fn test_caps(){
-        let xml = caps();
+    fn test_caps() {
+        let provider = TorznabProvider::new();
+        let xml = provider.caps();
     }
 }

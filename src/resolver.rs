@@ -1,13 +1,16 @@
 use std::time::Duration;
 
 use anyhow::Result;
+use async_trait::async_trait;
 use headless_chrome::{protocol::page::ScreenshotFormat, Browser, Element};
 use log::info;
 use magnet_url::Magnet;
 use rbatis::crud::CRUD;
+use regex::Regex;
 use scraper::{Html, Selector};
 use select::document::Document;
 use select::predicate::Name;
+use thiserror::Error;
 
 use crate::global;
 use crate::model::{Tv, TvSeed};
@@ -76,9 +79,6 @@ impl Resolver {
     }
 }
 
-use async_trait::async_trait;
-use regex::Regex;
-
 fn extra_ep(name: &str) -> Result<i64> {
     let re = Regex::new(r"第(\d+)集").unwrap();
     let option = re.captures(name);
@@ -89,7 +89,7 @@ fn extra_ep(name: &str) -> Result<i64> {
             return Ok(result);
         }
     }
-    Ok(-1)
+    Err(ResolveError::EpParseFailure(name.to_string()).into())
 }
 
 #[async_trait]
@@ -97,6 +97,12 @@ trait CommonResolver {
     fn new() -> Self;
     async fn fetch(&self, tv: &Tv) -> Result<Vec<Data>>;
     async fn normalize(&self, tv: &Tv, datas: Vec<Data>) -> Result<Vec<Data>>;
+}
+
+#[derive(Error, Debug)]
+pub enum ResolveError {
+    #[error("Can't parse ep for name: {0}")]
+    EpParseFailure(String),
 }
 
 #[async_trait]
@@ -158,7 +164,7 @@ impl CommonResolver for Domp4Resolver {
                 magneturl.tr.clear();
                 magneturl.dn = None;
 
-                let ep = extra_ep(&clean_up_name).unwrap_or(-1);
+                let ep = extra_ep(&clean_up_name).expect("can't extra ep");
 
                 let clean_up_name = if ep > 0 {
                     format!(
@@ -190,5 +196,10 @@ mod tests {
     fn test_extra_ep() {
         assert_eq!(extra_ep("第26集").unwrap(), 26);
         assert_eq!(extra_ep("第01集").unwrap(), 1);
+    }
+
+    #[test]
+    fn test_cant_extra_ep() {
+        assert_eq!(extra_ep("S01E03").is_err(), true);
     }
 }

@@ -11,7 +11,8 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.14", features = ["full"] }
 async-std = { version = "1.10.0", features = ["attributes", "tokio1"] }
 sqlx = { version = "0.5", features = ["migrate", "runtime-async-std-rustls", "sqlite"] }
-anyhow = "1.0.45"
+anyhow = "1"
+thiserror = "1"
 clap = "2"
 lazy_static = "1.4.0"
 human-panic = "1.0.3"

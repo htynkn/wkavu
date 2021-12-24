@@ -11,17 +11,17 @@ use std::path::Path;
 use std::thread;
 
 use actix_cors::Cors;
-use actix_web::{App as wApp, get, HttpRequest, HttpResponse, HttpServer, post, Responder, web};
 use actix_web::http::header;
 use actix_web::http::header::ContentType;
+use actix_web::{get, post, web, App as wApp, HttpRequest, HttpResponse, HttpServer, Responder};
 use async_std::task;
 use clap::{App, Arg};
 use cronjob::CronJob;
 use env_logger::Env;
 use log::{error, info, warn};
-use rbatis::{Page, PageRequest};
 use rbatis::core::db::db_adapter::DBPool::Sqlite;
 use rbatis::crud::CRUD;
+use rbatis::{Page, PageRequest};
 
 use crate::model::{OperationResponse, PageResponse, Tv, TvSeed};
 use crate::resolver::{Domp4Resolver, Resolver};
@@ -168,7 +168,7 @@ async fn tv_delete(tv_delete_request: web::Json<TvDeleteRequest>) -> HttpRespons
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    if Path::new("log4rs.yml").exist() {
+    if Path::new("log4rs.yml").exists() {
         log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     } else {
         env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
@@ -232,9 +232,9 @@ async fn main() -> std::io::Result<()> {
             .route("/admin/tvs/delete", web::post().to(tv_delete))
             .service(actix_files::Files::new("/", &static_folder).index_file("index.html"))
     })
-        .bind("0.0.0.0:8000")?
-        .run()
-        .await
+    .bind("0.0.0.0:8000")?
+    .run()
+    .await
 }
 
 fn on_cron(name: &str) {
@@ -248,7 +248,6 @@ fn on_cron(name: &str) {
     });
 }
 
-
 #[cfg(test)]
 mod tests {
     use actix_web::{http, test};
@@ -257,7 +256,8 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_health_ok() {
-        let req = test::TestRequest::with_header("content-type", "application/json; charset=UTF-8").to_http_request();
+        let req = test::TestRequest::with_header("content-type", "application/json; charset=UTF-8")
+            .to_http_request();
         let resp = health().await;
         assert_eq!(resp.status(), http::StatusCode::OK);
     }

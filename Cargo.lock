@@ -4521,6 +4521,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "thiserror",
  "tinytemplate",
  "tokio 1.14.0",
  "urlencoding",
