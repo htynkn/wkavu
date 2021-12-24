@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use headless_chrome::{Browser, Element, protocol::page::ScreenshotFormat};
+use headless_chrome::{protocol::page::ScreenshotFormat, Browser, Element};
 use log::info;
 use magnet_url::Magnet;
 use rbatis::crud::CRUD;
@@ -45,10 +45,7 @@ impl Resolver {
         if tv.is_some() {
             let tv = tv.unwrap();
             let resolver = Domp4Resolver::new();
-            let data = resolver
-                .fetch(&tv)
-                .await
-                .unwrap();
+            let data = resolver.fetch(&tv).await.unwrap();
             let data = resolver.normalize(&tv, data).await.unwrap();
 
             info!("find {:?} for tv:{:?}", data, tv);
@@ -148,33 +145,40 @@ impl CommonResolver for Domp4Resolver {
     }
 
     async fn normalize(&self, tv: &Tv, datas: Vec<Data>) -> Result<Vec<Data>> {
-        Ok(datas.into_iter().map(|d| {
-            let clean_up_name = str::replace(&str::replace(&d.name, "HD1080p", "[HDTV-1080p]"), ".mp4", "");
+        Ok(datas
+            .into_iter()
+            .map(|d| {
+                let clean_up_name = str::replace(
+                    &str::replace(&d.name, "HD1080p", "[HDTV-1080p]"),
+                    ".mp4",
+                    "",
+                );
 
-            let mut magneturl = Magnet::new(&d.url).unwrap();
-            magneturl.tr.clear();
-            magneturl.dn = None;
+                let mut magneturl = Magnet::new(&d.url).unwrap();
+                magneturl.tr.clear();
+                magneturl.dn = None;
 
-            let ep = extra_ep(&clean_up_name).unwrap_or(-1);
+                let ep = extra_ep(&clean_up_name).unwrap_or(-1);
 
-            let clean_up_name = if ep > 0 {
-                format!(
-                    "{} S01E{} - {} - [chinese] - {} - Domp4",
-                    tv.tvname.as_ref().unwrap(),
+                let clean_up_name = if ep > 0 {
+                    format!(
+                        "{} S01E{} - {} - [chinese] - {} - Domp4",
+                        tv.tvname.as_ref().unwrap(),
+                        ep,
+                        ep,
+                        &clean_up_name
+                    )
+                } else {
+                    clean_up_name
+                };
+
+                Data {
                     ep,
-                    ep,
-                    &clean_up_name
-                )
-            } else {
-                clean_up_name
-            };
-
-            Data {
-                ep,
-                name: clean_up_name,
-                url: magneturl.to_string(),
-            }
-        }).collect())
+                    name: clean_up_name,
+                    url: magneturl.to_string(),
+                }
+            })
+            .collect())
     }
 }
 

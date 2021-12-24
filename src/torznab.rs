@@ -6,16 +6,16 @@ use actix_web::web::Query;
 use chrono::{Duration, Utc};
 use log::info;
 use magnet_url::Magnet;
-use rbatis::{Page, PageRequest};
 use rbatis::crud::CRUD;
 use rbatis::utils::error_util::ToResult;
+use rbatis::{Page, PageRequest};
 use tinytemplate::TinyTemplate;
 use xml::writer::{EmitterConfig, EventWriter, Result, XmlEvent};
 
-use crate::{ApiRequest, TvSeed};
 use crate::global;
 use crate::model::Tv;
 use crate::resolver::Domp4Resolver;
+use crate::{ApiRequest, TvSeed};
 
 pub struct TorznabProvider {}
 
@@ -66,7 +66,7 @@ impl TorznabProvider {
    </tags>
 </caps>
         "#
-            .to_string()
+        .to_string()
     }
 
     pub async fn search(&self, info: &Query<ApiRequest>) -> String {
@@ -134,10 +134,7 @@ impl TorznabProvider {
 
             writer.write(
                 XmlEvent::start_element("enclosure")
-                    .attr(
-                        "url",
-                        xml::escape::escape_str_attribute(&url).as_ref(),
-                    )
+                    .attr("url", xml::escape::escape_str_attribute(&url).as_ref())
                     .attr("type", "application/x-bittorrent")
                     .attr("length", "0"),
             );
