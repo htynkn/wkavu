@@ -1250,6 +1250,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+dependencies = [
+ "atty",
+ "humantime 2.1.0",
+ "log 0.4.14",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "error-chain"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1600,7 +1613,7 @@ checksum = "b972f505b0adbacd697b3d78c94fbaf9c02d569ca11d416816956851f3a83017"
 dependencies = [
  "base64 0.10.1",
  "derive_builder",
- "env_logger",
+ "env_logger 0.6.2",
  "failure",
  "log 0.4.14",
  "rand 0.7.3",
@@ -4493,6 +4506,7 @@ dependencies = [
  "clap",
  "cron 0.9.0",
  "cronjob",
+ "env_logger 0.9.0",
  "headless_chrome",
  "human-panic",
  "lazy_static",

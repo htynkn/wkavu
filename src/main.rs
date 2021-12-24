@@ -7,19 +7,21 @@ extern crate lazy_static;
 extern crate rbatis;
 extern crate tinytemplate;
 
-use actix_web::http::header;
+use std::path::Path;
 use std::thread;
 
 use actix_cors::Cors;
+use actix_web::{App as wApp, get, HttpRequest, HttpResponse, HttpServer, post, Responder, web};
+use actix_web::http::header;
 use actix_web::http::header::ContentType;
-use actix_web::{get, post, web, App as wApp, HttpRequest, HttpResponse, HttpServer, Responder};
 use async_std::task;
 use clap::{App, Arg};
 use cronjob::CronJob;
+use env_logger::Env;
 use log::{error, info, warn};
+use rbatis::{Page, PageRequest};
 use rbatis::core::db::db_adapter::DBPool::Sqlite;
 use rbatis::crud::CRUD;
-use rbatis::{Page, PageRequest};
 
 use crate::model::{OperationResponse, PageResponse, Tv, TvSeed};
 use crate::resolver::{Domp4Resolver, Resolver};
@@ -166,7 +168,11 @@ async fn tv_delete(tv_delete_request: web::Json<TvDeleteRequest>) -> HttpRespons
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
+    if Path::new("log4rs.yml").exist() {
+        log4rs::init_file("log4rs.yml", Default::default()).unwrap();
+    } else {
+        env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    }
 
     info!("Starting...");
 
@@ -226,9 +232,9 @@ async fn main() -> std::io::Result<()> {
             .route("/admin/tvs/delete", web::post().to(tv_delete))
             .service(actix_files::Files::new("/", &static_folder).index_file("index.html"))
     })
-    .bind("0.0.0.0:8000")?
-    .run()
-    .await
+        .bind("0.0.0.0:8000")?
+        .run()
+        .await
 }
 
 fn on_cron(name: &str) {
@@ -245,8 +251,9 @@ fn on_cron(name: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use actix_web::{http, test};
+
+    use super::*;
 
     #[actix_rt::test]
     async fn test_health_ok() {
