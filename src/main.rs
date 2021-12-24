@@ -5,23 +5,28 @@ extern crate cronjob;
 extern crate lazy_static;
 #[macro_use]
 extern crate rbatis;
+#[macro_use]
+extern crate rust_embed;
 extern crate tinytemplate;
 
+use std::path::Path;
 use std::thread;
 
 use actix_cors::Cors;
-use actix_web::{App as wApp, get, HttpRequest, HttpResponse, HttpServer, post, Responder, web};
+use actix_web::http::header;
 use actix_web::http::header::ContentType;
+use actix_web::{get, post, web, App as wApp, HttpRequest, HttpResponse, HttpServer, Responder};
 use async_std::task;
 use clap::{App, Arg};
 use cronjob::CronJob;
+use env_logger::Env;
 use log::{error, info, warn};
-use rbatis::{Page, PageRequest};
 use rbatis::core::db::db_adapter::DBPool::Sqlite;
 use rbatis::crud::CRUD;
+use rbatis::{Page, PageRequest};
 
 use crate::model::{OperationResponse, PageResponse, Tv, TvSeed};
-use crate::resolver::{Domp4Resolver, Resolver};
+use crate::resolver::Resolver;
 use crate::torznab::TorznabProvider;
 
 mod global;
@@ -30,6 +35,12 @@ mod resolver;
 mod torznab;
 
 async fn root() -> HttpResponse {
+    HttpResponse::Found()
+        .header(header::LOCATION, "index.html")
+        .finish()
+}
+
+async fn health() -> HttpResponse {
     HttpResponse::Ok().body("server is up!")
 }
 
@@ -104,17 +115,34 @@ async fn refresh() -> HttpResponse {
 
 async fn tv_list(tvs_request: web::Query<TvsRequest>) -> HttpResponse {
     let wrapper = global::RB.new_wrapper();
-    let page = PageRequest::new(tvs_request.page.unwrap_or(1_u64), tvs_request.perPage.unwrap_or(10_u64));
-    let tv_page: Page<Tv> = global::RB.fetch_page_by_wrapper(wrapper, &page).await.unwrap();
+    let page = PageRequest::new(
+        tvs_request.page.unwrap_or(1_u64),
+        tvs_request.perPage.unwrap_or(10_u64),
+    );
+    let tv_page: Page<Tv> = global::RB
+        .fetch_page_by_wrapper(wrapper, &page)
+        .await
+        .unwrap();
 
     let response = PageResponse::from(tv_page);
     HttpResponse::Ok().json(response)
 }
 
-async fn seed_list(seeds_path_request: web::Path<SeedsPathRequest>, seeds_request: web::Query<SeedsRequest>) -> HttpResponse {
-    let wrapper = global::RB.new_wrapper().eq(TvSeed::tv_id(), seeds_path_request.tvid);
-    let page = PageRequest::new(seeds_request.page.unwrap_or(1_u64), seeds_request.perPage.unwrap_or(10_u64));
-    let seed_page: Page<TvSeed> = global::RB.fetch_page_by_wrapper(wrapper, &page).await.unwrap();
+async fn seed_list(
+    seeds_path_request: web::Path<SeedsPathRequest>,
+    seeds_request: web::Query<SeedsRequest>,
+) -> HttpResponse {
+    let wrapper = global::RB
+        .new_wrapper()
+        .eq(TvSeed::tv_id(), seeds_path_request.tvid);
+    let page = PageRequest::new(
+        seeds_request.page.unwrap_or(1_u64),
+        seeds_request.perPage.unwrap_or(10_u64),
+    );
+    let seed_page: Page<TvSeed> = global::RB
+        .fetch_page_by_wrapper(wrapper, &page)
+        .await
+        .unwrap();
 
     let response = PageResponse::from(seed_page);
     HttpResponse::Ok().json(response)
@@ -142,7 +170,11 @@ async fn tv_delete(tv_delete_request: web::Json<TvDeleteRequest>) -> HttpRespons
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
+    if Path::new("log4rs.yml").exists() {
+        log4rs::init_file("log4rs.yml", Default::default()).unwrap();
+    } else {
+        env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    }
 
     info!("Starting...");
 
@@ -164,10 +196,13 @@ async fn main() -> std::io::Result<()> {
         )
         .get_matches();
 
-    let db_url = matches.value_of("db").unwrap_or("sqlite://:memory:").to_string();
-    let static_folder = matches.value_of("static-folder").unwrap_or("./webapp").to_string();
+    let db_url = matches.value_of("db").unwrap_or("sqlite://:memory:");
+    let static_folder = matches
+        .value_of("static-folder")
+        .unwrap_or("./webapp")
+        .to_string();
 
-    global::RB.link(&db_url).await.unwrap();
+    global::RB.link(db_url).await.unwrap();
 
     let db_pool = global::RB.get_pool().unwrap();
     if let Sqlite(pool, _) = db_pool {
@@ -189,7 +224,8 @@ async fn main() -> std::io::Result<()> {
         let cors = Cors::permissive();
         wApp::new()
             .wrap(cors)
-            .route("/health", web::get().to(root))
+            .route("/", web::get().to(root))
+            .route("/health", web::get().to(health))
             .route("/api", web::get().to(api))
             .route("/admin/fetch", web::get().to(refresh))
             .route("/admin/tvs", web::get().to(tv_list))
@@ -198,9 +234,9 @@ async fn main() -> std::io::Result<()> {
             .route("/admin/tvs/delete", web::post().to(tv_delete))
             .service(actix_files::Files::new("/", &static_folder).index_file("index.html"))
     })
-        .bind("0.0.0.0:8000")?
-        .run()
-        .await
+    .bind("0.0.0.0:8000")?
+    .run()
+    .await
 }
 
 fn on_cron(name: &str) {
@@ -212,4 +248,19 @@ fn on_cron(name: &str) {
             resolver.fetch_by_tv(tv.id.unwrap()).await;
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use actix_web::{http, test};
+
+    use super::*;
+
+    #[actix_rt::test]
+    async fn test_health_ok() {
+        let req = test::TestRequest::with_header("content-type", "application/json; charset=UTF-8")
+            .to_http_request();
+        let resp = health().await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+    }
 }

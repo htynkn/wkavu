@@ -1,18 +1,21 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use headless_chrome::{Browser, Element, protocol::page::ScreenshotFormat};
+use async_trait::async_trait;
+use headless_chrome::{protocol::page::ScreenshotFormat, Browser, Element};
 use log::info;
 use magnet_url::Magnet;
 use rbatis::crud::CRUD;
+use regex::Regex;
 use scraper::{Html, Selector};
 use select::document::Document;
 use select::predicate::Name;
+use serde::Deserialize;
+use serde::Serialize;
+use thiserror::Error;
 
 use crate::global;
 use crate::model::{Tv, TvSeed};
-
-pub struct Domp4Resolver {}
 
 #[derive(Debug)]
 pub struct Data {
@@ -44,11 +47,8 @@ impl Resolver {
 
         if tv.is_some() {
             let tv = tv.unwrap();
-            let resolver = Domp4Resolver::new();
-            let data = resolver
-                .fetch(&tv)
-                .await
-                .unwrap();
+            let resolver = DefaultResolver::new();
+            let data = resolver.fetch(&tv).await.unwrap();
             let data = resolver.normalize(&tv, data).await.unwrap();
 
             info!("find {:?} for tv:{:?}", data, tv);
@@ -79,9 +79,6 @@ impl Resolver {
     }
 }
 
-use async_trait::async_trait;
-use regex::Regex;
-
 fn extra_ep(name: &str) -> Result<i64> {
     let re = Regex::new(r"第(\d+)集").unwrap();
     let option = re.captures(name);
@@ -92,7 +89,7 @@ fn extra_ep(name: &str) -> Result<i64> {
             return Ok(result);
         }
     }
-    Ok(-1)
+    Err(ResolveError::EpParseFailure(name.to_string()).into())
 }
 
 #[async_trait]
@@ -102,15 +99,74 @@ trait CommonResolver {
     async fn normalize(&self, tv: &Tv, datas: Vec<Data>) -> Result<Vec<Data>>;
 }
 
+#[derive(Error, Debug)]
+pub enum ResolveError {
+    #[error("Can't parse ep for name: {0}")]
+    EpParseFailure(String),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverDefine {
+    id: String,
+    name: String,
+    domains: Vec<String>,
+    timeout: u64,
+    search: ResolverSearchDefine,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverRowSelectorDefine {
+    attr: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverRowsDefine {
+    selector: String,
+    title: ResolverRowSelectorDefine,
+    url: ResolverRowSelectorDefine,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolverSearchDefine {
+    wait: String,
+    rows: ResolverRowsDefine,
+}
+
+#[derive(RustEmbed)]
+#[folder = "define/"]
+struct Define;
+
+pub struct DefaultResolver {
+    pub defines: Vec<ResolverDefine>,
+}
+
 #[async_trait]
-impl CommonResolver for Domp4Resolver {
+impl CommonResolver for DefaultResolver {
     fn new() -> Self {
-        Domp4Resolver {}
+        let mut defines = vec![];
+        for file in Define::iter() {
+            let yaml = Define::get(file.as_ref()).unwrap();
+            let yaml_content = std::str::from_utf8(yaml.data.as_ref());
+            let define: ResolverDefine = serde_yaml::from_str(yaml_content.unwrap()).unwrap();
+            info!("load config for {}", define.id);
+            defines.push(define);
+        }
+        DefaultResolver { defines }
     }
 
     async fn fetch(&self, tv: &Tv) -> Result<Vec<Data>> {
-        info!("starting fetch...");
         let url = tv.url.as_ref().unwrap();
+        let selected_define = self.defines.iter().find(|d| {
+            for domain in &d.domains {
+                if url.starts_with(domain) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        let selected_define = selected_define.unwrap();
+
+        info!("starting fetch...");
         let mut data = vec![];
 
         let browser = Browser::default().unwrap();
@@ -118,10 +174,13 @@ impl CommonResolver for Domp4Resolver {
         let tab = browser.wait_for_initial_tab().unwrap();
         info!("browser tab is ready");
 
-        tab.navigate_to(url).unwrap();
+        tab.navigate_to(&url).unwrap();
 
-        tab.wait_for_element_with_custom_timeout("a.copybtn", Duration::from_secs(30))
-            .unwrap();
+        tab.wait_for_element_with_custom_timeout(
+            &selected_define.search.wait,
+            Duration::from_secs(selected_define.timeout),
+        )
+        .unwrap();
         info!("waiting for special button");
 
         let root_div: Element = tab.wait_for_element("body").unwrap();
@@ -134,12 +193,12 @@ impl CommonResolver for Domp4Resolver {
         let document = Html::parse_document(html.as_str().unwrap());
         info!("get doc object");
 
-        let selector = Selector::parse("ul.down-list div.url-left a").unwrap();
+        let selector = Selector::parse(&selected_define.search.rows.selector).unwrap();
         let list = document.select(&selector);
 
         for item in list {
-            let title = item.value().attr("title");
-            let url = item.value().attr("href");
+            let title = item.value().attr(&selected_define.search.rows.title.attr);
+            let url = item.value().attr(&selected_define.search.rows.url.attr);
 
             data.push(Data::new(title.unwrap(), url.unwrap()));
         }
@@ -148,43 +207,63 @@ impl CommonResolver for Domp4Resolver {
     }
 
     async fn normalize(&self, tv: &Tv, datas: Vec<Data>) -> Result<Vec<Data>> {
-        Ok(datas.into_iter().map(|d| {
-            let clean_up_name = str::replace(&str::replace(&d.name, "HD1080p", "[HDTV-1080p]"), ".mp4", "");
+        Ok(datas
+            .into_iter()
+            .map(|d| {
+                let clean_up_name = str::replace(
+                    &str::replace(&d.name, "HD1080p", "[HDTV-1080p]"),
+                    ".mp4",
+                    "",
+                );
 
-            let mut magneturl = Magnet::new(&d.url).unwrap();
-            magneturl.tr.clear();
-            magneturl.dn = None;
+                let mut magneturl = Magnet::new(&d.url).unwrap();
+                magneturl.tr.clear();
+                magneturl.dn = None;
 
-            let ep = extra_ep(&clean_up_name).unwrap_or(-1);
+                let ep = extra_ep(&clean_up_name).expect("can't extra ep");
 
-            let clean_up_name = if ep > 0 {
-                format!(
-                    "{} S01E{} - {} - [chinese] - {} - Domp4",
-                    tv.tvname.as_ref().unwrap(),
+                let clean_up_name = if ep > 0 {
+                    format!(
+                        "{} S01E{} - {} - [chinese] - {} - Domp4",
+                        tv.tvname.as_ref().unwrap(),
+                        ep,
+                        ep,
+                        &clean_up_name
+                    )
+                } else {
+                    clean_up_name
+                };
+
+                Data {
                     ep,
-                    ep,
-                    &clean_up_name
-                )
-            } else {
-                clean_up_name
-            };
-
-            Data {
-                ep,
-                name: clean_up_name,
-                url: magneturl.to_string(),
-            }
-        }).collect())
+                    name: clean_up_name,
+                    url: magneturl.to_string(),
+                }
+            })
+            .collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::Path;
+
     use super::*;
 
     #[test]
-    fn test_extra_ep() {
-        assert_eq!(extra_ep("第26集").unwrap(), 26);
-        assert_eq!(extra_ep("第01集").unwrap(), 1);
+    fn test_parse_yml() {
+        let paths = fs::read_dir("./define").unwrap();
+
+        for path in paths {
+            let result = std::fs::read_to_string(path.unwrap().path()).unwrap();
+            let define: ResolverDefine = serde_yaml::from_str(&result).unwrap();
+            println!("Define:{:?}", define);
+        }
+    }
+
+    #[test]
+    fn test_load() {
+        let resolver = DefaultResolver::new();
     }
 }

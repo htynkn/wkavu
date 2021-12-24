@@ -6,16 +6,15 @@ use actix_web::web::Query;
 use chrono::{Duration, Utc};
 use log::info;
 use magnet_url::Magnet;
-use rbatis::{Page, PageRequest};
 use rbatis::crud::CRUD;
 use rbatis::utils::error_util::ToResult;
+use rbatis::{Page, PageRequest};
 use tinytemplate::TinyTemplate;
 use xml::writer::{EmitterConfig, EventWriter, Result, XmlEvent};
 
-use crate::{ApiRequest, TvSeed};
 use crate::global;
 use crate::model::Tv;
-use crate::resolver::Domp4Resolver;
+use crate::{ApiRequest, TvSeed};
 
 pub struct TorznabProvider {}
 
@@ -66,11 +65,11 @@ impl TorznabProvider {
    </tags>
 </caps>
         "#
-            .to_string()
+        .to_string()
     }
 
     pub async fn search(&self, info: &Query<ApiRequest>) -> String {
-        let mut wrapper;
+        let wrapper;
         if info.tvdbid.is_some() {
             let tvdbid = info.tvdbid.as_ref().unwrap().clone();
             wrapper = global::RB.new_wrapper().eq("tvdbid", tvdbid);
@@ -134,10 +133,7 @@ impl TorznabProvider {
 
             writer.write(
                 XmlEvent::start_element("enclosure")
-                    .attr(
-                        "url",
-                        xml::escape::escape_str_attribute(&url).as_ref(),
-                    )
+                    .attr("url", xml::escape::escape_str_attribute(&url).as_ref())
                     .attr("type", "application/x-bittorrent")
                     .attr("length", "0"),
             );
@@ -215,6 +211,11 @@ mod tests {
     #[test]
     fn test_pub_date() {
         let date = pub_date();
-        println!("{}", date);
+    }
+
+    #[test]
+    fn test_caps() {
+        let provider = TorznabProvider::new();
+        let xml = provider.caps();
     }
 }

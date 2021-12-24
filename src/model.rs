@@ -32,11 +32,18 @@ pub struct PageResponse<T> {
 
 impl From<Page<Tv>> for PageResponse<TvResponse> {
     fn from(o: Page<Tv>) -> Self {
-        let tvs: Vec<TvResponse> = o.records.into_iter().map(|tv| TvResponse::from(tv)).collect();
+        let tvs: Vec<TvResponse> = o
+            .records
+            .into_iter()
+            .map(|tv| TvResponse::from(tv))
+            .collect();
         let x = PageResponse {
             status: 0,
             msg: "".to_string(),
-            data: PageDataResponse { items: tvs, total: o.total },
+            data: PageDataResponse {
+                items: tvs,
+                total: o.total,
+            },
         };
         x
     }
@@ -44,11 +51,18 @@ impl From<Page<Tv>> for PageResponse<TvResponse> {
 
 impl From<Page<TvSeed>> for PageResponse<TvSeedResponse> {
     fn from(o: Page<TvSeed>) -> Self {
-        let seeds: Vec<TvSeedResponse> = o.records.into_iter().map(|seed| TvSeedResponse::from(seed)).collect();
+        let seeds: Vec<TvSeedResponse> = o
+            .records
+            .into_iter()
+            .map(|seed| TvSeedResponse::from(seed))
+            .collect();
         PageResponse {
             status: 0,
             msg: "".to_string(),
-            data: PageDataResponse { items: seeds, total: o.total },
+            data: PageDataResponse {
+                items: seeds,
+                total: o.total,
+            },
         }
     }
 }
@@ -74,7 +88,6 @@ pub struct TvResponse {
     pub name: String,
 }
 
-
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct TvSeedResponse {
     pub id: i64,
@@ -89,7 +102,6 @@ pub struct PageDataResponse<T> {
     pub items: Vec<T>,
     pub total: u64,
 }
-
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Default)]
 pub struct OperationResponse {
