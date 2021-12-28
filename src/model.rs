@@ -21,7 +21,7 @@ pub struct TvSeed {
 }
 
 impl_field_name_method!(TvSeed { id, tv_id, ep });
-impl_field_name_method!(Tv { id });
+impl_field_name_method!(Tv { id, tvdbid });
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct PageResponse<T> {

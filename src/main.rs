@@ -216,7 +216,7 @@ async fn main() -> std::io::Result<()> {
     std::thread::spawn(|| {
         let mut cron = CronJob::new("Fetch", on_cron);
         cron.seconds("0");
-        cron.minutes("0");
+        cron.minutes("0,30");
         cron.start_job();
     });
 
@@ -242,10 +242,18 @@ async fn main() -> std::io::Result<()> {
 fn on_cron(name: &str) {
     task::spawn(async {
         info!("start fetching task...");
-        let tvs: Vec<Tv> = global::RB.fetch_list().await.unwrap();
-        let resolver = Resolver::new();
-        for tv in tvs {
-            resolver.fetch_by_tv(tv.id.unwrap()).await;
+
+        let want = global::WANT.lock().unwrap().clone();
+        global::WANT.lock().unwrap().clear();
+        for tvdbid in want.iter() {
+            let resolver = Resolver::new();
+            let wrapper = global::RB.new_wrapper().eq(Tv::tvdbid(), tvdbid);
+
+            let tv: Option<Tv> = global::RB.fetch_by_wrapper(wrapper).await.unwrap();
+            if tv.is_some() {
+                let id = tv.unwrap().id.unwrap();
+                resolver.fetch_by_tv(id).await;
+            }
         }
     });
 }
