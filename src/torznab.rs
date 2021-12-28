@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::ptr::write;
 use std::str::from_utf8;
 
@@ -94,6 +95,11 @@ impl TorznabProvider {
             .fetch_page_by_wrapper(wrapper, &req)
             .await
             .unwrap();
+
+        if seeds.total == 0 && info.ep.is_some() && info.tvdbid.is_some() {
+            let tvdbid = info.tvdbid.as_ref().unwrap().clone();
+            global::WANT.lock().unwrap().insert(tvdbid);
+        }
 
         let mut target: Vec<u8> = Vec::new();
         let mut writer = EmitterConfig::new()
