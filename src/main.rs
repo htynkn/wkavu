@@ -10,163 +10,25 @@ extern crate rust_embed;
 extern crate tinytemplate;
 
 use std::path::Path;
-use std::thread;
 
 use actix_cors::Cors;
-use actix_web::http::header;
-use actix_web::http::header::ContentType;
-use actix_web::{get, post, web, App as wApp, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App as wApp, HttpServer};
 use async_std::task;
 use clap::{App, Arg};
 use cronjob::CronJob;
 use env_logger::Env;
-use log::{error, info, warn};
+use log::info;
 use rbatis::core::db::db_adapter::DBPool::Sqlite;
 use rbatis::crud::CRUD;
-use rbatis::{Page, PageRequest};
 
-use crate::model::{OperationResponse, PageResponse, Tv, TvSeed};
+use crate::model::Tv;
 use crate::resolver::Resolver;
-use crate::torznab::TorznabProvider;
 
 mod global;
+mod http;
 mod model;
 mod resolver;
 mod torznab;
-
-async fn root() -> HttpResponse {
-    HttpResponse::Found()
-        .header(header::LOCATION, "index.html")
-        .finish()
-}
-
-async fn health() -> HttpResponse {
-    HttpResponse::Ok().body("server is up!")
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct ApiRequest {
-    t: String,
-    q: Option<String>,
-    tvdbid: Option<String>,
-    season: Option<i32>,
-    ep: Option<i32>,
-    offset: Option<u64>,
-    limit: Option<u64>,
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct TvsRequest {
-    perPage: Option<u64>,
-    page: Option<u64>,
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct SeedsRequest {
-    perPage: Option<u64>,
-    page: Option<u64>,
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct SeedsPathRequest {
-    tvid: u64,
-}
-
-#[derive(serde::Deserialize)]
-struct TvDeleteRequest {
-    id: u64,
-}
-
-#[derive(serde::Deserialize)]
-struct TvAddRequest {
-    name: String,
-    tvdbid: String,
-    tvname: String,
-    url: String,
-}
-
-async fn api(info: web::Query<ApiRequest>, req: HttpRequest) -> HttpResponse {
-    info!(
-        "query api with params:{:?} req:{:?}",
-        info,
-        req.query_string()
-    );
-
-    let provider = TorznabProvider::new();
-
-    let mut builder = HttpResponse::Ok();
-    builder.set(ContentType::xml());
-
-    let result = provider.handle(&info).await;
-
-    builder.body(result)
-}
-
-async fn refresh() -> HttpResponse {
-    task::spawn(async {
-        let tvs: Vec<Tv> = global::RB.fetch_list().await.unwrap();
-        let resolver = Resolver::new();
-        for tv in tvs {
-            resolver.fetch_by_tv(tv.id.unwrap()).await;
-        }
-    });
-    HttpResponse::Ok().json(OperationResponse::success())
-}
-
-async fn tv_list(tvs_request: web::Query<TvsRequest>) -> HttpResponse {
-    let wrapper = global::RB.new_wrapper();
-    let page = PageRequest::new(
-        tvs_request.page.unwrap_or(1_u64),
-        tvs_request.perPage.unwrap_or(10_u64),
-    );
-    let tv_page: Page<Tv> = global::RB
-        .fetch_page_by_wrapper(wrapper, &page)
-        .await
-        .unwrap();
-
-    let response = PageResponse::from(tv_page);
-    HttpResponse::Ok().json(response)
-}
-
-async fn seed_list(
-    seeds_path_request: web::Path<SeedsPathRequest>,
-    seeds_request: web::Query<SeedsRequest>,
-) -> HttpResponse {
-    let wrapper = global::RB
-        .new_wrapper()
-        .eq(TvSeed::tv_id(), seeds_path_request.tvid);
-    let page = PageRequest::new(
-        seeds_request.page.unwrap_or(1_u64),
-        seeds_request.perPage.unwrap_or(10_u64),
-    );
-    let seed_page: Page<TvSeed> = global::RB
-        .fetch_page_by_wrapper(wrapper, &page)
-        .await
-        .unwrap();
-
-    let response = PageResponse::from(seed_page);
-    HttpResponse::Ok().json(response)
-}
-
-async fn tv_add(tv_add: web::Json<TvAddRequest>) -> HttpResponse {
-    let new_tv = Tv {
-        id: None,
-        tvdbid: Some(tv_add.tvdbid.to_string()),
-        tvname: Some(tv_add.tvname.to_string()),
-        url: Some(tv_add.url.to_string()),
-        name: Some(tv_add.name.to_string()),
-    };
-
-    global::RB.save(&new_tv, &[]).await.unwrap();
-
-    HttpResponse::Ok().json(OperationResponse::success())
-}
-
-async fn tv_delete(tv_delete_request: web::Json<TvDeleteRequest>) -> HttpResponse {
-    let wrapper = global::RB.new_wrapper().eq(Tv::id(), tv_delete_request.id);
-    global::RB.remove_by_wrapper::<Tv>(wrapper).await.unwrap();
-    HttpResponse::Ok().json(OperationResponse::success())
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -224,14 +86,14 @@ async fn main() -> std::io::Result<()> {
         let cors = Cors::permissive();
         wApp::new()
             .wrap(cors)
-            .route("/", web::get().to(root))
-            .route("/health", web::get().to(health))
-            .route("/api", web::get().to(api))
-            .route("/admin/fetch", web::get().to(refresh))
-            .route("/admin/tvs", web::get().to(tv_list))
-            .route("/admin/seeds/tvid/{tvid}", web::get().to(seed_list))
-            .route("/admin/tvs", web::post().to(tv_add))
-            .route("/admin/tvs/delete", web::post().to(tv_delete))
+            .route("/", web::get().to(http::root))
+            .route("/health", web::get().to(http::health))
+            .route("/api", web::get().to(http::api))
+            .route("/admin/fetch", web::get().to(http::refresh))
+            .route("/admin/tvs", web::get().to(http::tv_list))
+            .route("/admin/seeds/tvid/{tvid}", web::get().to(http::seed_list))
+            .route("/admin/tvs", web::post().to(http::tv_add))
+            .route("/admin/tvs/delete", web::post().to(http::tv_delete))
             .service(actix_files::Files::new("/", &static_folder).index_file("index.html"))
     })
     .bind("0.0.0.0:8000")?
@@ -239,7 +101,7 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 
-fn on_cron(name: &str) {
+fn on_cron(_name: &str) {
     task::spawn(async {
         info!("start fetching task...");
 
@@ -256,19 +118,4 @@ fn on_cron(name: &str) {
             }
         }
     });
-}
-
-#[cfg(test)]
-mod tests {
-    use actix_web::{http, test};
-
-    use super::*;
-
-    #[actix_rt::test]
-    async fn test_health_ok() {
-        let req = test::TestRequest::with_header("content-type", "application/json; charset=UTF-8")
-            .to_http_request();
-        let resp = health().await;
-        assert_eq!(resp.status(), http::StatusCode::OK);
-    }
 }

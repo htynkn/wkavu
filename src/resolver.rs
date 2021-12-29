@@ -2,14 +2,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use headless_chrome::{protocol::page::ScreenshotFormat, Browser, Element};
+use headless_chrome::{Browser, Element};
 use log::info;
 use magnet_url::Magnet;
 use rbatis::crud::CRUD;
 use regex::Regex;
 use scraper::{Html, Selector};
-use select::document::Document;
-use select::predicate::Name;
+
 use serde::Deserialize;
 use serde::Serialize;
 use thiserror::Error;
@@ -247,7 +246,6 @@ impl CommonResolver for DefaultResolver {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::path::Path;
 
     use super::*;
 
@@ -264,6 +262,6 @@ mod tests {
 
     #[test]
     fn test_load() {
-        let resolver = DefaultResolver::new();
+        let _resolver = DefaultResolver::new();
     }
 }

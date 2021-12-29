@@ -1,21 +1,16 @@
-use std::borrow::BorrowMut;
-use std::ptr::write;
-use std::str::from_utf8;
-
 use actix_web::web;
 use actix_web::web::Query;
 use chrono::{Duration, Utc};
-use log::info;
-use magnet_url::Magnet;
+
 use rbatis::crud::CRUD;
-use rbatis::utils::error_util::ToResult;
+
 use rbatis::{Page, PageRequest};
-use tinytemplate::TinyTemplate;
-use xml::writer::{EmitterConfig, EventWriter, Result, XmlEvent};
+
+use xml::writer::{EmitterConfig, EventWriter, XmlEvent};
 
 use crate::global;
-use crate::model::Tv;
-use crate::{ApiRequest, TvSeed};
+use crate::http::ApiRequest;
+use crate::model::{Tv, TvSeed};
 
 pub struct TorznabProvider {}
 
@@ -216,12 +211,12 @@ mod tests {
 
     #[test]
     fn test_pub_date() {
-        let date = pub_date();
+        let _date = pub_date();
     }
 
     #[test]
     fn test_caps() {
         let provider = TorznabProvider::new();
-        let xml = provider.caps();
+        let _xml = provider.caps();
     }
 }
