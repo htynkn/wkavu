@@ -70,7 +70,7 @@ impl TorznabProvider {
             let tvdbid = info.tvdbid.as_ref().unwrap().clone();
             wrapper = global::RB.new_wrapper().eq("tvdbid", tvdbid);
         } else {
-            wrapper = global::RB.new_wrapper();
+            wrapper = global::RB.new_wrapper().limit(1);
         }
 
         let tv: Option<Tv> = global::RB.fetch_by_wrapper(wrapper).await.unwrap();
