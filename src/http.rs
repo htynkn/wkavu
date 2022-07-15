@@ -1,7 +1,7 @@
+use tokio::runtime::Handle;
 use actix_web::http::header;
 use actix_web::http::header::ContentType;
 use actix_web::{web, HttpRequest, HttpResponse};
-use async_std::task;
 
 use log::info;
 
@@ -82,7 +82,8 @@ pub async fn api(info: web::Query<ApiRequest>, req: HttpRequest) -> HttpResponse
 }
 
 pub async fn refresh() -> HttpResponse {
-    task::spawn(async {
+    let handle = Handle::current();
+    handle.spawn(async {
         let tvs: Vec<Tv> = global::RB.fetch_list().await.unwrap();
         let resolver = Resolver::new();
         for tv in tvs {

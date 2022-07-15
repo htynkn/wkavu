@@ -10,10 +10,10 @@ extern crate rust_embed;
 extern crate tinytemplate;
 
 use std::path::Path;
+use tokio::runtime::Handle;
 
 use actix_cors::Cors;
 use actix_web::{web, App as wApp, HttpServer};
-use async_std::task;
 use clap::{App, Arg};
 use cronjob::CronJob;
 use env_logger::Env;
@@ -102,7 +102,8 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn on_cron(_name: &str) {
-    task::spawn(async {
+    let handle = Handle::current();
+    handle.spawn(async {
         info!("start fetching task...");
 
         let want = global::WANT.lock().unwrap().clone();
