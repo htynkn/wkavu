@@ -6,11 +6,11 @@ edition = "2021"
 [dependencies]
 rbson = "2"
 log = "0.4"
-rbatis = "3.0"
+rbatis = { version = "3.0", features =["runtime-async-std-rustls","sqlite"], default-features = false}
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.14", features = ["full"] }
 async-std = { version = "1.10.0", features = ["attributes", "tokio1"] }
-sqlx = { version = "0.5", features = ["migrate", "runtime-tokio-rustls", "sqlite"] }
+sqlx = { version = "0.5", features = ["migrate", "runtime-async-std-rustls", "sqlite"] }
 anyhow = "1"
 thiserror = "1"
 clap = "2"
