@@ -10,7 +10,7 @@ rbatis = "3.0"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.14", features = ["full"] }
 async-std = { version = "1.10.0", features = ["attributes", "tokio1"] }
-sqlx = { version = "0.5", features = ["migrate", "runtime-async-std-rustls", "sqlite"] }
+sqlx = { version = "0.5", features = ["migrate", "runtime-tokio-rustls", "sqlite"] }
 anyhow = "1"
 thiserror = "1"
 clap = "2"
