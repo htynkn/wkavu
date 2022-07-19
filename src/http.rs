@@ -1,7 +1,7 @@
-use tokio::runtime::Handle;
 use actix_web::http::header;
 use actix_web::http::header::ContentType;
 use actix_web::{web, HttpRequest, HttpResponse};
+use tokio::runtime::Handle;
 
 use log::info;
 
@@ -12,6 +12,7 @@ use crate::global;
 use crate::model::{OperationResponse, PageResponse, Tv, TvSeed};
 use crate::resolver::Resolver;
 use crate::torznab::TorznabProvider;
+use async_std::task;
 
 pub async fn root() -> HttpResponse {
     HttpResponse::Found()
@@ -82,8 +83,7 @@ pub async fn api(info: web::Query<ApiRequest>, req: HttpRequest) -> HttpResponse
 }
 
 pub async fn refresh() -> HttpResponse {
-    let handle = Handle::current();
-    handle.spawn(async {
+    task::spawn(async {
         let tvs: Vec<Tv> = global::RB.fetch_list().await.unwrap();
         let resolver = Resolver::new();
         for tv in tvs {
