@@ -3,7 +3,7 @@ use std::time::Duration;
 use anyhow::Result;
 use async_trait::async_trait;
 use headless_chrome::{Browser, Element};
-use log::info;
+use log::{error, info};
 use magnet_url::Magnet;
 use rbatis::crud::CRUD;
 use regex::Regex;
@@ -190,7 +190,7 @@ impl CommonResolver for DefaultResolver {
             &selected_define.search.wait,
             Duration::from_secs(selected_define.timeout),
         )
-        .unwrap();
+            .unwrap();
         info!("waiting for special button");
 
         let root_div: Element = tab.wait_for_element("body").unwrap();
@@ -219,6 +219,13 @@ impl CommonResolver for DefaultResolver {
     async fn normalize(&self, tv: &Tv, datas: Vec<Data>) -> Result<Vec<Data>> {
         Ok(datas
             .into_iter()
+            .filter(|d| {
+                let enable_to_parse = extra_ep(&d.name).is_ok();
+                if !enable_to_parse {
+                    error!("can't parse {}", &d.name);
+                }
+                enable_to_parse
+            })
             .map(|d| {
                 let clean_up_name = str::replace(
                     &str::replace(&d.name, "HD1080p", "[HDTV-1080p]"),
