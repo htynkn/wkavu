@@ -3,7 +3,7 @@ id: domp4
 name: domp4
 domains:
   - https://www.domp4.cc/
-timeout: 30
+timeout: 60
 
 search:
   wait: a.copybtn
