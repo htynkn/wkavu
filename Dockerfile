@@ -1,4 +1,4 @@
-FROM rust:1.59 as builder
+FROM rust:1.66 as builder
 WORKDIR /usr/src/wkavu
 COPY . .
 RUN apt-get update && apt-get install -y \
