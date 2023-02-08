@@ -99,6 +99,16 @@ fn extra_ep(name: &str) -> Result<i64> {
         }
     }
 
+    let re = Regex::new(r"E(\d+)").unwrap();
+    let option = re.captures(name);
+    if option.is_some() {
+        let captures = option.unwrap();
+        if captures.len() > 0 {
+            let result: i64 = captures[1].parse().unwrap();
+            return Ok(result);
+        }
+    }
+
     Err(ResolveError::EpParseFailure(name.to_string()).into())
 }
 
