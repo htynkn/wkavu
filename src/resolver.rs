@@ -7,6 +7,7 @@ use log::{error, info};
 use magnet_url::Magnet;
 use rbatis::crud::CRUD;
 use regex::Regex;
+use reqwest::header;
 use scraper::{Html, Selector};
 
 use serde::Deserialize;
@@ -132,11 +133,18 @@ pub struct ResolverDefine {
     domains: Vec<String>,
     timeout: u64,
     search: ResolverSearchDefine,
+    provider: Option<ContentProviderType>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ContentProviderType {
+    Chrome,
+    Reqwest,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResolverRowSelectorDefine {
-    attr: String,
+    attr: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -148,7 +156,7 @@ pub struct ResolverRowsDefine {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResolverSearchDefine {
-    wait: String,
+    wait: Option<String>,
     rows: ResolverRowsDefine,
 }
 
@@ -189,38 +197,75 @@ impl CommonResolver for DefaultResolver {
         info!("starting fetch...");
         let mut data = vec![];
 
-        let browser = Browser::default().unwrap();
+        let provider_type = selected_define
+            .provider
+            .as_ref()
+            .unwrap_or(&ContentProviderType::Chrome);
 
-        let tab = browser.wait_for_initial_tab().unwrap();
-        info!("browser tab is ready");
+        let html_content = match provider_type {
+            ContentProviderType::Reqwest => {
+                let mut headers = header::HeaderMap::new();
+                headers.insert(
+                    header::USER_AGENT,
+                    header::HeaderValue::from_static("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"),
+                );
 
-        tab.navigate_to(&url).unwrap();
+                // get a client builder
+                let client = reqwest::Client::builder()
+                    .default_headers(headers)
+                    .build()?;
+                let res = client.get(url).send().await?;
+                res.text().await?
+            }
+            ContentProviderType::Chrome => {
+                let browser = Browser::default().unwrap();
 
-        tab.wait_for_element_with_custom_timeout(
-            &selected_define.search.wait,
-            Duration::from_secs(selected_define.timeout),
-        )
-            .unwrap();
-        info!("waiting for special button");
+                let tab = browser.wait_for_initial_tab().unwrap();
+                info!("browser tab is ready");
 
-        let root_div: Element = tab.wait_for_element("body").unwrap();
-        let html = root_div
-            .call_js_fn("function() { return this.innerHTML;}", true)
-            .unwrap()
-            .value
-            .unwrap();
+                tab.navigate_to(&url).unwrap();
 
-        let document = Html::parse_document(html.as_str().unwrap());
+                selected_define.search.wait.as_ref().map(|wait| {
+                    info!("waiting for special button");
+                    tab.wait_for_element_with_custom_timeout(
+                        &wait,
+                        Duration::from_secs(selected_define.timeout),
+                    )
+                    .unwrap();
+                });
+
+                let root_div: Element = tab.wait_for_element("body").unwrap();
+                let html = root_div
+                    .call_js_fn("function() { return this.innerHTML;}", true)
+                    .unwrap()
+                    .value
+                    .unwrap();
+
+                html.as_str().unwrap().to_string()
+            }
+        };
+
+        let document = Html::parse_document(&html_content);
         info!("get doc object");
 
         let selector = Selector::parse(&selected_define.search.rows.selector).unwrap();
         let list = document.select(&selector);
 
         for item in list {
-            let title = item.value().attr(&selected_define.search.rows.title.attr);
-            let url = item.value().attr(&selected_define.search.rows.url.attr);
+            let title = if let Some(attr) = &selected_define.search.rows.title.attr {
+                item.value().attr(attr)
+            } else {
+                item.text().next()
+            };
+            let url = selected_define
+                .search
+                .rows
+                .url
+                .attr
+                .as_ref()
+                .map(|attr| item.value().attr(attr));
 
-            data.push(Data::new(title.unwrap(), url.unwrap()));
+            data.push(Data::new(title.unwrap(), url.unwrap().unwrap()));
         }
 
         Ok(data)
@@ -251,7 +296,7 @@ impl CommonResolver for DefaultResolver {
 
                 let clean_up_name = if ep > 0 {
                     format!(
-                        "{} S01E{} - {} - [chinese] - {} - Domp4",
+                        "{} S01E{} - {} - [chinese] - {} - Wkavu",
                         tv.tvname.as_ref().unwrap(),
                         ep,
                         ep,

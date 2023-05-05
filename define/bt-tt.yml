@@ -1,0 +1,15 @@
+---
+id: bt-tt
+name: bt-tt
+domains:
+  - https://www.bt-tt.com/
+timeout: 60
+provider: Reqwest
+
+search:
+  rows:
+    selector: div.bot a
+    title:
+      attr:
+    url:
+      attr: href
