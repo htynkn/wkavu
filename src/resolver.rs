@@ -257,9 +257,13 @@ impl CommonResolver for DefaultResolver {
             } else {
                 item.text().next()
             };
-            let url = selected_define.search.rows.url.attr.as_ref().map(|attr| {
-                item.value().attr(attr)
-            });
+            let url = selected_define
+                .search
+                .rows
+                .url
+                .attr
+                .as_ref()
+                .map(|attr| item.value().attr(attr));
 
             data.push(Data::new(title.unwrap(), url.unwrap().unwrap()));
         }

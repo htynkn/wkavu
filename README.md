@@ -1,6 +1,6 @@
 # wkavu
 
-![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/htynkn/wkavu/Rust/master)
+[![Rust](https://github.com/htynkn/wkavu/actions/workflows/rust.yml/badge.svg)](https://github.com/htynkn/wkavu/actions/workflows/rust.yml)
 ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/htynkn/wkavu/latest)
 ![Docker Pulls](https://img.shields.io/docker/pulls/htynkn/wkavu)
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/htynkn/wkavu)
