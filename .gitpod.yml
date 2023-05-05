@@ -1,7 +1,10 @@
 tasks:
   - init: cargo install cargo-watch && cargo build
-    command: cargo watch -x run
+    command: cargo build
 
 vscode:
   extensions:
     - k--kato.intellij-idea-keybindings
+    - GitHub.copilot
+    - rust-lang.rust-analyzer
+    - vadimcn.vscode-lldb
