@@ -330,11 +330,14 @@ mod tests {
             let result = std::fs::read_to_string(path.unwrap().path()).unwrap();
             let define: ResolverDefine = serde_yaml::from_str(&result).unwrap();
             println!("Define:{:?}", define);
+            // Ensure that the define is parsed successfully
+            assert!(define.name.len() > 0);
         }
     }
 
     #[test]
     fn test_load() {
-        let _resolver = DefaultResolver::new();
+        let resolver = DefaultResolver::new();
+        // Ensure that the resolver is created successfully
     }
 }
