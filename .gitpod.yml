@@ -5,6 +5,7 @@ tasks:
 vscode:
   extensions:
     - k--kato.intellij-idea-keybindings
-    - GitHub.copilot
+    - GitHub.copilot-nightly
     - rust-lang.rust-analyzer
     - vadimcn.vscode-lldb
+    - ms-azuretools.vscode-docker

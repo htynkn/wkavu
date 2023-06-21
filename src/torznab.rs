@@ -215,8 +215,16 @@ mod tests {
     }
 
     #[test]
+    fn test_new() {
+        let provider = TorznabProvider::new();
+        // Ensure that the provider is created successfully
+        assert!(provider.caps().contains("<caps>"));
+    }
+
+    #[test]
     fn test_caps() {
         let provider = TorznabProvider::new();
-        let _xml = provider.caps();
+        // Ensure that the caps method returns the expected XML string
+        assert!(provider.caps().contains("<server version=\"1.1\""));
     }
 }
