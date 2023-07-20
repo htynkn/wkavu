@@ -1,9 +1,0 @@
-version = 1
-
-[[analyzers]]
-name = "rust"
-enabled = false
-
-[[analyzers]]
-name = "docker"
-enabled = false
